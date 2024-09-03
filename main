@@ -1,0 +1,107 @@
+import asyncio
+import logging
+import sys
+from email import message_from_string
+
+from os import getenv
+
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
+from aiogram import Bot, Dispatcher, html, F
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandStart
+from aiogram.types import Message
+
+# All handlers should be attached to the Router (or Dispatcher)
+
+dp = Dispatcher()
+
+class RegistrationForm(StatesGroup):
+    fio = State()
+    subject = State()
+    bio = State()
+    photo = State()
+    achievements = State()
+
+@dp.message(CommandStart())
+async def command_start_handler(message: Message) -> None:
+    """
+    This handler receives messages with `/start` command
+    """
+    print(message)
+    print(message.text)
+    print(message.from_user)
+
+    # Most event objects have aliases for API methods that can be called in events' context
+    # For example if you want to answer to incoming message you can use `message.answer(...)` alias
+    # and the target chat will be passed to :ref:`aiogram.methods.send_message.SendMessage`
+    # method automatically or call API method directly via
+    # Bot instance: `bot.send_message(chat_id=message.chat.id, ...)`
+    await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
+
+
+@dp.message(F.text=='регистрация')
+async def start_registration(message: Message, state: FSMContext) -> None:
+    """
+    This function uses to starting the registrayion.
+    :param message:
+    :return:
+    """
+    await message.answer(text="Введите ФИО:")
+    await state.set_state(RegistrationForm.fio)
+
+@dp.message(RegistrationForm.fio)
+async def get_fio(message: Message, state: FSMContext) -> None:
+    """
+    This function uses to get and save fio
+    """
+    fio = message.text
+    await state.update_data(fio=fio)
+    await message.answer(text="Введите все преподаваемые предметы через запятую")
+    await state.set_state(RegistrationForm.subject)
+
+@dp.message(RegistrationForm.subject)
+async def get_subject(message: Message, state: FSMContext) -> None:
+    """"
+    This function uses to get and save subject
+    """
+    subject = message.text
+    await state.update_data(subject=subject)
+    await state.set_state(RegistrationForm.subject)
+
+@dp.message(RegistrationForm.bio)
+async def get_bio(message: Message, state: FSMContext) -> None:
+    """
+    This function uses to get and save bio
+    :param message:
+    :param state:
+    :return:
+    """
+    bio = message.text
+    await state.update_data(bio=bio)
+    data = await state.get_data()
+    await state.set_state(RegistrationForm.bio)
+
+@dp.message()
+async def error_handler(message: Message) -> None:
+    """
+    Handler will forward receive a message back to the sender
+
+    By default, message handler will handle all message types (like a text, photo, sticker etc.)
+    """
+    await message.answer("Я тебя не понял")
+
+
+async def main() -> None:
+    # Initialize Bot instance with default bot properties which will be passed to all API calls
+    bot = Bot(token="7539376898:AAFE7vOoLfWhLyXn7QvOa78IQC6gfqsVSak",
+              default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+
+    # And the run events dispatching
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())
